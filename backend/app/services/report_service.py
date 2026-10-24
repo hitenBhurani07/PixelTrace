@@ -35,10 +35,13 @@ class ReportService:
             raise ValueError(f"Investigation Case {case_id} not found.")
 
         evidence_list = db.query(EvidenceFile).filter(EvidenceFile.case_id == case_id).all()
-        relationships = db.query(EvidenceRelationship).filter(
-            EvidenceRelationship.source_evidence_id.in_([e.id for e in evidence_list]) |
-            EvidenceRelationship.target_evidence_id.in_([e.id for e in evidence_list])
-        ).all()
+        ev_ids = [e.id for e in evidence_list]
+        relationships = []
+        if ev_ids:
+            relationships = db.query(EvidenceRelationship).filter(
+                (EvidenceRelationship.source_evidence_id.in_(ev_ids)) |
+                (EvidenceRelationship.target_evidence_id.in_(ev_ids))
+            ).all()
         events = db.query(InvestigationEvent).filter(InvestigationEvent.case_id == case_id).order_by(InvestigationEvent.event_timestamp.asc()).all()
         exact_dups = similarity_service.get_exact_duplicates(db, case_id=case_id)
 
@@ -233,8 +236,28 @@ class ReportService:
             story.append(rel_table)
         story.append(Spacer(1, 14))
 
+        # Metadata Correlation Findings
+        meta_events = [ev for ev in events if ev.event_type == "metadata_correlated"]
+        story.append(Paragraph("5. Metadata Correlation Findings", h2_style))
+        if not meta_events:
+            story.append(Paragraph("No dedicated metadata correlation analyses were recorded for this case.", body_style))
+        else:
+            for me in meta_events[:5]:
+                story.append(Paragraph(f"• {me.examiner_notes or me.event_timestamp.strftime('%Y-%m-%d %H:%M:%S')}", body_style))
+        story.append(Spacer(1, 12))
+
+        # Computer Vision Transformation Analysis Findings
+        tf_events = [ev for ev in events if ev.event_type == "transformation_analyzed"]
+        story.append(Paragraph("6. Image Transformation & Geometric Homography Findings", h2_style))
+        if not tf_events:
+            story.append(Paragraph("No controlled computer vision transformation analyses were executed in this case scope.", body_style))
+        else:
+            for te in tf_events[:5]:
+                story.append(Paragraph(f"• {te.examiner_notes or te.event_timestamp.strftime('%Y-%m-%d %H:%M:%S')}", body_style))
+        story.append(Spacer(1, 12))
+
         # Investigation Audit Trail
-        story.append(Paragraph("5. Investigation Chronological Audit Trail", h2_style))
+        story.append(Paragraph("7. Investigation Chronological Audit Trail", h2_style))
         if not events:
             story.append(Paragraph("No audit events recorded.", body_style))
         else:
@@ -264,7 +287,7 @@ class ReportService:
         story.append(Spacer(1, 14))
 
         # Mandatory Forensic Limitations Section
-        story.append(Paragraph("6. Forensic Methodology & Scientific Limitations", h2_style))
+        story.append(Paragraph("8. Forensic Methodology & Scientific Limitations", h2_style))
         limitations = (
             "1. <b>Algorithmic Inferences vs. Certified Conclusions:</b> Perceptual hashing (pHash, aHash, dHash) "
             "measures frequency/gradient visual similarity. A high similarity score does NOT prove common source, "

@@ -5,10 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
+from datetime import datetime
 from backend.app.core.config import settings
 from backend.app.database.session import get_db
 from backend.app.models.evidence_file import EvidenceFile
 from backend.app.models.evidence_relationship import EvidenceRelationship
+from backend.app.models.investigation_event import InvestigationEvent
 from backend.app.schemas.forensic_schemas import (
     EvidenceDetailResponse, IntegrityVerificationResponse,
     SimilaritySearchRequest, SimilaritySearchResponse,
@@ -147,6 +149,25 @@ def run_transformation_analysis(
             ref_id=ev_ref.id,
             cand_id=ev_cand.id
         )
+
+        # Log transformation analysis event in investigation timeline
+        event = InvestigationEvent(
+            case_id=ev_ref.case_id,
+            evidence_id=ev_ref.id,
+            event_type="transformation_analyzed",
+            event_timestamp=datetime.utcnow(),
+            details_json=json.dumps({
+                "reference_id": ev_ref.id,
+                "candidate_id": ev_cand.id,
+                "inferred_type": res["transformation_type_inferred"],
+                "inliers_count": res["inliers_count"],
+                "method": res["feature_method"]
+            }),
+            examiner_notes=f"Transformation analysis executed against {ev_cand.id}: {res['transformation_type_inferred']} (Confidence: {res['confidence_level']})."
+        )
+        db.add(event)
+        db.commit()
+
         return TransformationAnalysisResponse(**res)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Transformation analysis failed: {str(e)}")

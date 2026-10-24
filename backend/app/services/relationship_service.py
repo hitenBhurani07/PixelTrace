@@ -28,10 +28,12 @@ class RelationshipService:
         if source_id == target_id:
             raise ValueError("Cannot create a relationship between an image and itself.")
 
-        # Check existing
+        # Check existing in either direction for undirected forensic relationships
         rel = db.query(EvidenceRelationship).filter(
-            EvidenceRelationship.source_evidence_id == source_id,
-            EvidenceRelationship.target_evidence_id == target_id,
+            or_(
+                (EvidenceRelationship.source_evidence_id == source_id) & (EvidenceRelationship.target_evidence_id == target_id),
+                (EvidenceRelationship.source_evidence_id == target_id) & (EvidenceRelationship.target_evidence_id == source_id)
+            ),
             EvidenceRelationship.relationship_type == relationship_type
         ).first()
 
@@ -95,6 +97,8 @@ class RelationshipService:
         evidence_files = ev_query.all()
 
         ev_id_set = {e.id for e in evidence_files}
+        if not ev_id_set:
+            return {"case_id": case_id, "nodes": [], "edges": []}
 
         # Build nodes
         nodes = []

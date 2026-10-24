@@ -64,7 +64,7 @@ class HashingService:
         norm_similarity = max(0.0, min(1.0, 1.0 - (distance / float(cls.TOTAL_BITS))))
 
         if distance == 0:
-            category = "Exact Duplicate"
+            category = "Exact Visual Match (Non-Cryptographic)"
         elif distance <= 4:
             category = "Strong Visual Similarity"
         elif distance <= 10:

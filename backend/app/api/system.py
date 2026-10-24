@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
+from datetime import datetime
 from backend.app.database.session import get_db
 from backend.app.models.investigation_case import InvestigationCase
 from backend.app.models.evidence_file import EvidenceFile
 from backend.app.models.evidence_relationship import EvidenceRelationship
+from backend.app.models.investigation_event import InvestigationEvent
 from backend.app.schemas.forensic_schemas import (
     DashboardStatsResponse, CaseResponse, EvidenceResponse,
     MetadataComparisonResponse
@@ -114,6 +116,25 @@ def compare_metadata_endpoints(
         name1=ev1.original_filename,
         name2=ev2.original_filename
     )
+
+    # Log metadata correlation in case audit timeline
+    event = InvestigationEvent(
+        case_id=ev1.case_id,
+        evidence_id=ev1.id,
+        event_type="metadata_correlated",
+        event_timestamp=datetime.utcnow(),
+        details_json=json.dumps({
+            "source_id": ev1.id,
+            "target_id": ev2.id,
+            "shared_camera": res["shared_camera_model"],
+            "shared_timestamp": res["shared_capture_date"],
+            "shared_gps": res["shared_gps_location"]
+        }),
+        examiner_notes=f"Metadata correlation analyzed between {ev1.original_filename} and {ev2.original_filename}."
+    )
+    db.add(event)
+    db.commit()
+
     return MetadataComparisonResponse(
         source_evidence_id=ev1.id,
         target_evidence_id=ev2.id,
