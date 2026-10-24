@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Storage (keep folders, exclude large evidence/temp)
+storage/evidence/*
+!storage/evidence/.gitkeep
+storage/derived/*
+!storage/derived/.gitkeep
+storage/reports/*
+!storage/reports/.gitkeep
+storage/temporary/*
+!storage/temporary/.gitkeep
+
+# SQLite database
+*.db
+*.sqlite3
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
